@@ -1,6 +1,6 @@
 const { CommandInteraction, MessageEmbed } = require("discord.js");
-const { Economy } = require("economy-mongoose");
-const { dataBase } = require('../../config.json')
+const { Economy } = require("economy-mongoose")
+const { Database } = require('../../Structures/config.json')
 module.exports = {
     name: 'pay',
     description: 'Pay a user your cash.',
@@ -26,7 +26,7 @@ module.exports = {
     async execute(interaction) {
         const { guild, options, member } = interaction
 
-        Economy.connect(dataBase)
+        Economy.connect(Database)
 
             const payTo = options.getUser('user')
             const total = options.getString('amount')

@@ -1,11 +1,11 @@
-const { dataBase } = require('../../config.json')
+const { Database } = require('../../Structures/config.json')
 const { Economy } = require("economy-mongoose")
 module.exports = {
     name: 'guildMemberAdd',
     on: true,
     async execute(member) {
 
-        Economy.connect(dataBase)
+        Economy.connect(Database)
             const { guild } = member;
 
             if(member.user.bot) return;

@@ -1,6 +1,6 @@
 const { CommandInteraction, MessageEmbed } = require("discord.js");
-const { Economy } = require("economy-mongoose");
-const { dataBase } = require('../../config.json')
+const { Economy } = require("economy-mongoose")
+const { Database } = require('../../Structures/config.json')
 const { Cooldown } = require("cooldown.js/lib/cooldown");
 module.exports = {
     name: 'rob',
@@ -20,7 +20,7 @@ module.exports = {
      */
     async execute(interaction) {
         const cooldown = new Cooldown();
-        Economy.connect(dataBase)
+        Economy.connect(Database)
         const { guild, member, options } = interaction
         const target = options.getUser('user');
 

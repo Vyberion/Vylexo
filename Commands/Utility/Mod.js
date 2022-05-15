@@ -39,7 +39,7 @@ module.exports = {
         const { options, member, guild, channel } = interaction;
 
         const Data = await DB.findOne({ GuildID: guild.id });
-        if (!Data) return interaction.reply({ content: "You havn't set up a mod message log yet, Please do this with /modlogsetup.", ephemeral: true });
+        if (!Data) return interaction.reply({ content: "You havn't set up a mod message log yet, Please do this with /modlog.", ephemeral: true });
 
         const channellog = Data.ChannelID
 

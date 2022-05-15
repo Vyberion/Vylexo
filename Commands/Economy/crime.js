@@ -1,7 +1,7 @@
 const { Cooldown } = require("cooldown.js/lib/cooldown");
 const { CommandInteraction, MessageEmbed } = require("discord.js");
 const { Economy } = require("economy-mongoose")
-const { dataBase } = require('../../config.json')
+const { Database } = require('../../Structures/config.json')
 module.exports = {
     name: 'crime',
     description: 'Commit a crime for money.',
@@ -36,7 +36,7 @@ module.exports = {
         let result = Math.floor((Math.random() * opts.length))
         let money = Math.floor(Math.random() * 3001)
 
-        Economy.connect(dataBase)
+        Economy.connect(Database)
 
         const check = await Economy.getUser(user, guild.id)
         if(!check) {
