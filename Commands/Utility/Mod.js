@@ -1,156 +1,327 @@
-const { CommandInteraction, MessageEmbed, Client, GuildMember } = require("discord.js");
-const DB = require("../../Structures/Schemas/Modlog");
-
+const { MessageEmbed, MessageActionRow, MessageButton, Modal, TextInputComponent } = require('discord.js');
+const ms = require('ms-prettify').default;
 
 module.exports = {
-    name: "mod",
-    description: "Warn, kick and ban system.",
+	name: 'moderate',
+    description: 'Moderate a member.',
+    permissions: {
+        member: ['MANAGE_MESSAGES'],
+        bot: ['KICK_MEMBERS', 'BAN_MEMBERS', 'MODERATE_MEMBERS'],
+	},
     options: [
-        {
-            name: "member",
-            description: "Select the member to take action on.",
-            type: "USER",
+    	{
+          	name: 'member',
+        	description: 'Provide a member.',
+        	type: 'USER',
             required: true,
-        },
-        {
-            name: "actions",
-            description: "Select an action.",
-            type: "STRING",
-            required: true,
-            choices: [
-                { name: "warning", value: "warning" },
-                { name: "kick", value: "kick" },
-                { name: "ban", value: "ban" },                
-            ]
-        },
-        {
-            name: "reason",
-            description: "Provide a reason.",
-            type: "STRING",
-            required: true,
-        },
+        }, 
     ],
     /**
-     * 
-     * @param {CommandInteraction} interaction 
-     * @param {Client} client 
+     * @param {import(discord.js).CommandInteraction} interaction
+     * @param {import(discord.js).Client} client
      */
-    async execute(interaction, client) {
-        const { options, member, guild, channel } = interaction;
-
-        const Data = await DB.findOne({ GuildID: guild.id });
-        if (!Data) return interaction.reply({ content: "You havn't set up a mod message log yet, Please do this with /modlog.", ephemeral: true });
-
-        const channellog = Data.ChannelID
-
-        const user = options.getMember("member");
-        const reason = options.getString("reason");
-        const id = await interaction.guild.members.fetch(user.id);
-
-        if(!id)
-        return interaction.reply({ content: "Invalid user ID.", ephemeral: true })
-
-        switch(options.getString("actions")) {
-            case "warning" : {
-                if(!interaction.member.permissions.has("MANAGE_MESSAGES"))
-                return interaction.reply({ content: "You do not have the valid permissions to use this action.", ephemeral: true });
-
-                if(interaction.member.roles.highest.position <= id.roles.highest.position)
-                return interaction.reply({ content: "You can't use this action on this member.", ephemeral: true })
-
-                const warn = new MessageEmbed()
-                    .setTitle("Succesfully Warned")
-                    .setColor("YELLOW")
-                    .setThumbnail(id.user.avatarURL({ dynamic: true }))
-                    .setFields(
-                        { name: "ID", value: id.id },
-                        { name: "Warn Reason", value: reason },
-                        { name: "Joined Server", value: `<t:${parseInt(id.joinedTimestamp / 1000)}:R>`, inline: true },
-                        { name: "Account Created", value: `<t:${parseInt(id.user.createdTimestamp / 1000)}:R>`, inline: true }
-                    );
-                await id.send({ embeds: [new MessageEmbed()
-                    .setTitle("**Warning**")
-                    .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.avatarURL({Dynamic: true, size: 512}) })
-                    .setColor("YELLOW")
-                    .setThumbnail(`${guild.iconURL({dynamic: true, size: 512})}`)
-                    .setFields(
-                        { name: "Warned by", value: interaction.user.tag },
-                        { name: "Reason", value: reason },
-                        { name: "Discord Server", value: guild.name },
-                )] })
-                .catch(()=>{console.log("⛔ Private message blocked by the user.")});
-                await interaction.reply({ embeds: [warn], ephemeral: true });
-                await guild.channels.cache.get(`${channellog}`).send({ embeds: [warn] });
-            }
-            break;
-
-            case "kick" : {
-                if(!interaction.member.permissions.has("KICK_MEMBERS"))
-                return interaction.reply({ content: "You do not have the valid permissions to use this action.", ephemeral: true });
-
-                if(interaction.member.roles.highest.position <= id.roles.highest.position)
-                return interaction.reply({ content: "You can't use this action on this member.", ephemeral: true })
-
-                const kick = new MessageEmbed()
-                    .setTitle("Succesfully Kicked")
-                    .setColor("ORANGE")
-                    .setThumbnail(id.user.avatarURL({ dynamic: true }))
-                    .setFields(
-                        { name: "ID", value: id.id },
-                        { name: "Kick Reason", value: reason },
-                        { name: "Joined Server", value: `<t:${parseInt(id.joinedTimestamp / 1000)}:R>`, inline: true },
-                        { name: "Account Created", value: `<t:${parseInt(id.user.createdTimestamp / 1000)}:R>`, inline: true },
-                    );
-                await id.send({ embeds: [new MessageEmbed()
-                    .setTitle("**Kicked**")
-                    .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.avatarURL({Dynamic: true, size: 512}) })
-                    .setColor("ORANGE")
-                    .setThumbnail(`${guild.iconURL({dynamic: true, size: 512})}`)
-                    .setFields(
-                        { name: "Kicked by", value: interaction.user.tag },
-                        { name: "Reason", value: reason },
-                        { name: "Discord Server", value: guild.name },
-                )] })
-                .catch(()=>{console.log("⛔ Private message blocked by the user.")});
-                await interaction.reply({ embeds: [kick], ephemeral: true });
-                await id.kick({ reason: reason });
-                await guild.channels.cache.get(`${channellog}`).send({ embeds: [kick] });
-            }
-            break;
-
-            case "ban" : {
-                if(!interaction.member.permissions.has("BAN_MEMBERS"))
-                return interaction.reply({ content: "You do not have the valid permissions to use this action.", ephemeral: true });
-
-                if(interaction.member.roles.highest.position <= id.roles.highest.position)
-                return interaction.reply({ content: "You can't use this action on this member.", ephemeral: true })
-                
-                const ban = new MessageEmbed()
-                    .setTitle("Succesfully Banned")
-                    .setColor("RED")
-                    .setThumbnail(id.user.avatarURL({ dynamic: true }))
-                    .setFields(
-                        { name: "ID", value: id.id },
-                        { name: "Ban Reason", value: reason },
-                        { name: "Joined Server", value: `<t:${parseInt(id.joinedTimestamp / 1000)}:R>`, inline: true },
-                        { name: "Account Created", value: `<t:${parseInt(id.user.createdTimestamp / 1000)}:R>`, inline: true },
-                    );
-                await id.send({ embeds: [new MessageEmbed()
-                    .setTitle("**Banned**")
-                    .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.avatarURL({Dynamic: true, size: 512}) })
-                    .setColor("RED")
-                    .setThumbnail(`${guild.iconURL({dynamic: true, size: 512})}`)
-                    .setFields(
-                        { name: "Banned by", value: interaction.user.tag },
-                        { name: "Reason", value: reason },
-                        { name: "Discord Server", value: guild.name },
-                )] })
-                .catch(()=>{console.log("⛔ Private message blocked by the user.")});
-                await interaction.reply({ embeds: [ban], ephemeral: true });
-                await id.ban({ days: 0, reason: reason});
-                await guild.channels.cache.get(`${channellog}`).send({ embeds: [ban] });
-            }
-            break;
+    execute: async (interaction, client) => {
+  		const { options, guild } = interaction;
+        const Target = options.getMember(`member`);
+        
+        if(interaction.member.roles.highest.position < Target.roles.highest.position){
+            return interaction.reply({
+                content: "You cannot moderate higher roles than you.",
+                ephemeral: true,
+            })
         }
-    } 
-}
+        
+        if(interaction.user.id === Target.id){
+            return interaction.reply({
+                content: "You cannot moderate yourself.",
+                ephemeral: true,
+            })
+        }
+        
+        const Embed = new MessageEmbed()
+        .setColor('DARK_BUT_NOT_BLACK')
+        .setDescription(
+        `
+User: ${Target}(\`${Target.user.tag}\`)
+UserID: \`${Target.id}\`
+Created: <t:${parseInt(Target.user.createdTimestamp / 1000)}:R>
+Bannable?: ${Target.bannable ? 'Yes' : 'No'}
+Kickable?: ${Target.kickable ? 'Yes' : 'No'}
+Moderatable?: ${Target.moderatable ? 'Yes' : 'No'}
+Manageable?: ${Target.manageable ? 'Yes': 'No'}		
+`)
+        .setAuthor({ 
+        	name: Target.user.tag,
+            iconURL: Target.displayAvatarURL({ dynamic: true }),
+        })
+        .setFooter({
+            text: guild.name,
+            iconURL: guild.iconURL({ dynamic: true }),
+        })
+        
+        let firstBanActionRow;
+        let secondBanActionRow;
+        
+       	let BanModel = new Modal()
+        .setTitle(`Ban - ${Target.user.tag}`)
+        .setCustomId(`model-ban`);
+        
+        const ban_message_deletes = new TextInputComponent()
+			.setCustomId('ban-message_deletes')
+		    .setLabel("How many previous message should I delete?")
+        	.setPlaceholder('1 day, 7 days, none')
+        	.setRequired(true)
+		    .setStyle('SHORT');
+        
+        const ban_reason = new TextInputComponent()
+			.setCustomId('ban-reason')
+		    .setLabel("Why are you banning? Reason")
+		    .setStyle('PARAGRAPH')
+        	.setRequired(false);
+        
+       	secondBanActionRow = new MessageActionRow().addComponents(ban_message_deletes);
+        firstBanActionRow = new MessageActionRow().addComponents(ban_reason);
+        BanModel.addComponents(secondBanActionRow, firstBanActionRow);
+        
+        
+        let TimeoutModel = new Modal()
+        .setTitle(`Timeout - ${Target.user.tag}`)
+        .setCustomId(`model-ban`);
+        
+        const timeout_duration = new TextInputComponent()
+			.setCustomId('timeout-duration')
+		    .setLabel("Provide Duration")
+        	.setPlaceholder('1m, 1h, 1d')
+		    .setRequired(true)
+        	.setStyle('SHORT');
+        
+        const timeout_reason = new TextInputComponent()
+			.setCustomId('timeout-reason')
+		    .setLabel("Why are you muting? Reason")
+		    .setStyle('PARAGRAPH')
+        	.setRequired(false);
+        
+        firstBanActionRow = new MessageActionRow().addComponents(timeout_reason);
+       	secondBanActionRow = new MessageActionRow().addComponents(timeout_duration);
+        TimeoutModel.addComponents(secondBanActionRow, firstBanActionRow);
+        
+        
+        let KickModel = new Modal()
+        .setTitle(`Kick - ${Target.user.tag}`)
+        .setCustomId(`model-kick`);
+        
+        const kick_reason = new TextInputComponent()
+			.setCustomId('kick-reason')
+		    .setLabel("Why are you kicking? Reason")
+		    .setStyle('PARAGRAPH')
+        	.setRequired(false);
+        
+        firstBanActionRow = new MessageActionRow().addComponents(kick_reason);
+       	KickModel.addComponents(firstBanActionRow);
+        
+        const Actions = new MessageActionRow()
+        if(Target.bannable) {
+            Actions.addComponents(
+            	new MessageButton()
+                .setCustomId('moderate-ban')
+                .setStyle('DANGER')
+                .setLabel('Ban'),
+            )
+        } else {
+            Actions.addComponents(
+            	new MessageButton()
+                .setCustomId('moderate-ban')
+                .setStyle('DANGER')
+                .setLabel('Ban')
+            	.setDisabled(true),
+            );
+        };
+        
+        if(Target.kickable) {
+            Actions.addComponents(
+            	new MessageButton()
+                .setCustomId('moderate-kick')
+                .setStyle('DANGER')
+                .setLabel('Kick'),
+            );
+        } else { 
+        	Actions.addComponents(
+            	new MessageButton()
+                .setCustomId('moderate-kick')
+                .setStyle('DANGER')
+                .setLabel('Kick')
+                .setDisabled(true),
+            );
+        };
+        
+        if(Target.moderatable) {
+            Actions.addComponents(
+            	new MessageButton()
+                .setCustomId('moderate-timeout')
+                .setStyle('DANGER')
+                .setLabel('Timeout')
+            );
+        } else {
+            Actions.addComponents(
+            	new MessageButton()
+                .setCustomId('moderate-timeout')
+                .setStyle('DANGER')
+                .setLabel('Timeout')
+                .setDisabled(true),
+            );
+        };
+        
+        const message = await interaction.reply({
+            embeds: [Embed],
+            components: [Actions],
+        	content: `User ID: ${Target.id}`,
+            fetchReply: true
+        });
+        const collector = await message.createMessageComponentCollector({ componentType: 'BUTTON', time: 30000 });
+        
+        collector.on('collect', i => {
+            if(!i.user.id === interaction.user.id)
+            return i.reply({ 
+            	content: 'You are not creator of this interaction.',
+                ephemeral: true,
+            });
+            
+            switch(i.customId) {
+                case "moderate-ban":
+                    
+                    i.showModal(BanModel);
+                    i.awaitModalSubmit({ time: 60000 })
+                    .then((interact) => {
+                        let Duration = interact.fields.getTextInputValue('ban-message_deletes');
+                        const Formats = ['7 days', '1 day', 'none'];
+                        if(!['7 days', '1 day', 'none'].includes(Duration)) 
+                        return interact.reply({
+                            content: 'You provided an invaild choice in message delete.',
+                            ephemeral: true,
+                        });
+                        if(!interact.member.permissions.has('BAN_MEMBER'))
+                        return interact.reply({
+                            content: 'An error has occured, you do not have the required permissions.',
+                            ephemeral: true,
+                        });
+                        let Reason = interact.fields.getTextInputValue('ban-reason') || 'No Reason Given';
+                    	
+                        const DurataON = Duration.replace(' days', '').replace(' day', '').replace('none', '0');
+                        const Edurationa = Number(DurataON);
+                        
+                    	Target.ban({
+                            days: Edurationa,
+                            reason: `${Reason} - ${interact.user.tag}`,
+                        });
+                        interact.reply({
+                            embeds: [
+                                new MessageEmbed()
+                                .setTitle('New Banned')
+                                .setAuthor({
+                                    name: `${Target.user.tag}`,
+                                    iconURL: Target.user.displayAvatarURL(),
+                                })
+                                .setFooter({
+                                    text: `Banned by: ${interact.user.tag}`,
+                                    iconURL: interact.user.displayAvatarURL(),
+                                })
+                                .setColor('DARK_BUT_NOT_BLACK')
+                                .setDescription(`${Target}(\`${Target.user.tag}\`) has been banned`)
+                                .addField(
+                                	'Reason:',
+                                    Reason,
+                                    false,
+                                )
+                            ]
+                        })
+                    })
+                    break;
+                case "moderate-kick":
+                    i.showModal(KickModel);
+                    i.awaitModalSubmit({ time: 60000 }) 
+                    .then((interact) => {
+                        Reason = interact.fields.getTextInputValue('kick-reason') || 'No Reason Given';
+                    	if(!interact.member.permissions.has('KICK_MEMBER'))
+                        return interact.reply({
+                            content: 'An error has occured, you do not have the required permissions.',
+                            ephemeral: true,
+                        });
+                        
+                        Target.kick(`${Reason} - ${interaction.user.tag}`)
+                        interact.reply({
+                            embeds: [
+                                new MessageEmbed()
+                                .setTitle('New Kicked')
+                                .setAuthor({
+                                    name: `${Target.user.tag}`,
+                                    iconURL: Target.user.displayAvatarURL(),
+                                })
+                                .setFooter({
+                                    text: `Kicked by: ${interact.user.tag}`,
+                                    iconURL: interact.user.displayAvatarURL(),
+                                })
+                                .setColor('DARK_BUT_NOT_BLACK')
+                                .setDescription(`${Target}(\`${Target.user.tag}\`) has been kicked.`)
+                                .addField(
+                                	'Reason:',
+                                    Reason,
+                                    false,
+                                )
+                            ]
+                        })
+                    })
+                    
+                    break;
+                case "moderate-timeout":
+                    i.showModal(TimeoutModel);
+                    i.awaitModalSubmit({ time: 60000 })
+                    .then((interact) => {
+                        Reason = interact.fields.getTextInputValue('timeout-reason') || 'No Reason Given';
+                    	Duration = interact.fields.getTextInputValue('timeout-duration');
+                        const msDuration = ms(Duration);
+                        
+                        if(!msDuration)
+                        return interact.reply({
+                            content: 'You provided an invald time. Example: 1m, 1h, 1d',
+                        	ephemeral: true,
+                        });
+                        
+                        Target.timeout(msDuration, `${Reason} - ${interact.user.tag}`);
+                        interact.reply({
+							embeds: [
+                                new MessageEmbed()
+                                .setTitle('New Timed out')
+                                .setAuthor({
+                                    name: `${Target.user.tag}`,
+                                    iconURL: Target.user.displayAvatarURL(),
+                                })
+                                .setFooter({
+                                    text: `Timed out by: ${interact.user.tag}`,
+                                    iconURL: interact.user.displayAvatarURL(),
+                                })
+                                .setColor('DARK_BUT_NOT_BLACK')
+                                .setDescription(`${Target}(\`${Target.user.tag}\`) has been timed out.`)
+                                .addField(
+                                	'Reason:',
+                                    Reason,
+                                    false,
+                                )
+                            ]
+                        })
+                    })
+                    break;
+            }
+        })
+        
+        collector.on('end', i => {
+			Actions.components[0].setDisabled(true)        
+        	Actions.components[1].setDisabled(true)        
+        	Actions.components[2].setDisabled(true)        
+        
+        	message.edit({
+                content: 'Got timed out.',
+                components: [Actions],
+            })
+        })
+    },
+};
